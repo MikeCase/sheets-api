@@ -44,27 +44,75 @@ class MySpreedsheet:
             # Call the Calendar API
             self.sheets = build('sheets', 'v4', credentials=self.creds)
             self.email = build('gmail', 'v1', credentials=self.creds)
+            self.email_subjects = []
+            self.from_email = []
+            self.sheet_range = 'Sheet1!A:C'
             
 
         except HttpError as error:
             print('An error occurred: %s' % error)
 
-    def create_new_sheet(self):
-        self.sheet = self.sheets.spreadsheets().create().execute()
-        if self.sheet:
-            self.spreadsheet_id = self.sheet['spreadsheetId']
-        print(self.sheet.keys())
+    def open_or_create_sheet(self):
+        ss_id = None
+        if os.path.exists('spreadsheet.id'):
+            with open('spreadsheet.id', 'r') as s_id:
+                ss_id = s_id.read()
+        
+        if ss_id:
+            self.spreadsheet_id = ss_id
+            self.sheet = self.sheets.spreadsheets()
+            result = self.sheet.values().get(spreadsheetId=ss_id,range=self.sheet_range).execute()
+            values = result.get('values', [])
+            if not values:
+                print('Sheet Empty')
+                return
 
-    def list_emails(self):
+            print('From\tSubject')
+            for row in values:
+                print(f'{row[0]}\t{row[1]}')
+
+        else:
+            self.sheet = self.sheets.spreadsheets().create().execute()
+            if self.sheet:
+                self.spreadsheet_id = self.sheet['spreadsheetId']
+                with open('spreadsheet.id', 'w') as f:
+                    f.write(self.spreadsheet_id)
+
+            print(self.sheet.keys())
+
+    def get_emails(self):
         emails = self.email.users().messages().list(userId='me').execute()
         email_ids = [i['id'] for i in emails['messages']]
         for item in email_ids:
             res = self.email.users().messages().get(userId='me', id=item).execute()
-            for sub in res['payload']['headers']:
-                if sub['name'] == 'Subject':
-                    print(sub['value'])
+            for header_value in res['payload']['headers']:
+                if header_value['name'] == 'Subject':
+                    self.email_subjects.append(header_value['value'])
+                if header_value['name'] == 'From':
+                    self.from_email.append(header_value['value'])
 
+        data = zip(self.from_email, self.email_subjects)
+
+        pprint.pprint(data)
+
+        values = [
+            email for email in data
+            # [subject for subject in self.email_subjects]
+        ]
+        body = {
+            'values': values,
+        }
+
+        sheet_result = self.sheets.spreadsheets().values().update(
+            spreadsheetId=self.spreadsheet_id,
+            range=self.sheet_range,
+            valueInputOption='USER_ENTERED',
+            body=body
+        ).execute()
+        print(f'{sheet_result.get("updatedCells")} Cells updated.')
 
 if __name__ == '__main__':
     ss = MySpreedsheet()
-    ss.list_emails()
+    ss.open_or_create_sheet()
+    print('grabbing emails.. ')
+    ss.get_emails()
