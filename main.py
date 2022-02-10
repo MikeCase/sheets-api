@@ -47,7 +47,7 @@ class MySpreedsheet:
             self.email_subjects = []
             self.from_email = []
             self.sheet_range = 'Sheet1!A:C'
-            
+            self.spreadsheet_url = None
 
         except HttpError as error:
             print('An error occurred: %s' % error)
@@ -74,6 +74,7 @@ class MySpreedsheet:
         else:
             self.sheet = self.sheets.spreadsheets().create().execute()
             if self.sheet:
+                self.spreadsheet_url = self.sheet['spreadsheetUrl']
                 self.spreadsheet_id = self.sheet['spreadsheetId']
                 with open('spreadsheet.id', 'w') as f:
                     f.write(self.spreadsheet_id)
