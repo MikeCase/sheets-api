@@ -86,11 +86,15 @@ class MySpreedsheet:
         email_ids = [i['id'] for i in emails['messages']]
         for item in email_ids:
             res = self.email.users().messages().get(userId='me', id=item).execute()
+            # print(res['payload']['headers'])
             for header_value in res['payload']['headers']:
+                
                 if header_value['name'] == 'Subject':
                     self.email_subjects.append(header_value['value'])
-                if header_value['name'] == 'From':
+                if header_value['name'] == 'From' or header_value['name'] == 'Reply-To':
+                    print(f".{header_value['value']}")
                     self.from_email.append(header_value['value'])
+                    
 
         data = zip(self.from_email, self.email_subjects)
 
@@ -117,3 +121,4 @@ if __name__ == '__main__':
     ss.open_or_create_sheet()
     print('grabbing emails.. ')
     ss.get_emails()
+    print(ss.spreadsheet_id)
