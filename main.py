@@ -13,6 +13,11 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
+from rich import print, console
+from tabulate import tabulate
+
+
+
 SCOPES = ['https://www.googleapis.com/auth/drive', 'https://www.googleapis.com/auth/spreadsheets', 'https://mail.google.com', ]
 os.environ['OAUTHLIB_RELAX_TOKEN_SCOPE'] = '1'
 
@@ -84,15 +89,17 @@ class MySpreedsheet:
     def get_emails(self):
         emails = self.email.users().messages().list(userId='me').execute()
         email_ids = [i['id'] for i in emails['messages']]
+        
         for item in email_ids:
             res = self.email.users().messages().get(userId='me', id=item).execute()
-            # print(res['payload']['headers'])
+            
             for header_value in res['payload']['headers']:
                 
                 if header_value['name'] == 'Subject':
                     self.email_subjects.append(header_value['value'])
-                if header_value['name'] == 'From' or header_value['name'] == 'Reply-To':
-                    print(f".{header_value['value']}")
+                    
+                if header_value['name'] == 'From' or header_value['name'] == 'FROM' or header_value['name'] == 'from':
+                    # print(f".{header_value['value']}")
                     self.from_email.append(header_value['value'])
                     
 
