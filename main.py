@@ -14,7 +14,7 @@ from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
 from rich import print, console
-from tabulate import tabulate
+# from tabulate import tabulate
 
 
 
@@ -53,6 +53,7 @@ class MySpreedsheet:
             self.from_email = []
             self.sheet_range = 'Sheet1!A:C'
             self.spreadsheet_url = None
+            self.page_count = 1
 
         except HttpError as error:
             print('An error occurred: %s' % error)
@@ -69,7 +70,6 @@ class MySpreedsheet:
             self.sheet = self.sheets.spreadsheets()
             self.spreadsheet_url = self.sheet.get(spreadsheetId=self.spreadsheet_id).execute()
             result = self.sheet.values().get(spreadsheetId=ss_id,range=self.sheet_range).execute()
-            print(result.keys())
             values = result.get('values', [])
             if not values:
                 print('Sheet Empty')
@@ -77,7 +77,12 @@ class MySpreedsheet:
 
             print('From\tSubject')
             for row in values:
-                print(f'{row[0]}{row[1]}')
+                if 'no-reply' in row[0].lower():
+                    pass
+                elif 'noreply' in row[0].lower():
+                    pass
+                else:
+                    print(f'{row[0]}{row[1]}')
 
 
         else:
@@ -107,10 +112,15 @@ class MySpreedsheet:
                 with open('spreadsheet.id', 'w') as f:
                     f.write(self.spreadsheet_id)
 
-            print(self.sheet['spreadsheetUrl'])
+            # print(self.sheet['spreadsheetUrl'])
 
-    def get_emails(self):
-        emails = self.email.users().messages().list(userId='me').execute()
+    def get_emails(self, pageId=None):
+        
+        emails = self.email.users().messages().list(userId='me', maxResults=500, pageToken=pageId).execute()
+        max_page_count = (emails['resultSizeEstimate'])
+        nextPageToken = emails['nextPageToken']
+        print(f'Getting page {self.page_count} of {max_page_count}')
+
         email_ids = [i['id'] for i in emails['messages']]
         
         for item in email_ids:
@@ -122,21 +132,18 @@ class MySpreedsheet:
                     self.email_subjects.append(header_value['value'])
 
                 if header_value['name'].lower() == 'from':
-                    
                     self.from_email.append(header_value['value'])
                     
+        if nextPageToken and self.page_count >= 3:
+            self.page_count += 1
+            self.get_emails(pageId=nextPageToken)
 
         data = zip(self.from_email, self.email_subjects)
 
-        pprint.pprint(data)
+        # pprint.pprint(data)
 
-        values = [
-            email for email in data
-            # [subject for subject in self.email_subjects]
-        ]
-        body = {
-            'values': values,
-        }
+        values = [email for email in data]
+        body = {'values': values}
 
         sheet_result = self.sheets.spreadsheets().values().update(
             spreadsheetId=self.spreadsheet_id,
