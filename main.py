@@ -64,9 +64,12 @@ class MySpreedsheet:
                 ss_id = s_id.read()
         
         if ss_id:
+            print("Spreadsheet Found")
             self.spreadsheet_id = ss_id
             self.sheet = self.sheets.spreadsheets()
+            self.spreadsheet_url = self.sheet.get(spreadsheetId=self.spreadsheet_id).execute()
             result = self.sheet.values().get(spreadsheetId=ss_id,range=self.sheet_range).execute()
+            print(result.keys())
             values = result.get('values', [])
             if not values:
                 print('Sheet Empty')
@@ -74,17 +77,37 @@ class MySpreedsheet:
 
             print('From\tSubject')
             for row in values:
-                print(f'{row[0]}\t{row[1]}')
+                print(f'{row[0]}{row[1]}')
+
 
         else:
+            print("Creating new spreadsheet")
+            self.requests = []
+            # Change the spreadsheet's title.
+            self.requests.append({
+                'updateSpreadsheetProperties': {
+                    'properties': {
+                        'title': "Emails"
+                    },
+                    'fields': 'title'
+                }
+            })
+            body = {
+                "requests": self.requests
+            }
             self.sheet = self.sheets.spreadsheets().create().execute()
             if self.sheet:
                 self.spreadsheet_url = self.sheet['spreadsheetUrl']
                 self.spreadsheet_id = self.sheet['spreadsheetId']
+                
+                resp = self.sheets.spreadsheets().batchUpdate(
+                    spreadsheetId=self.spreadsheet_id,
+                    body=body
+                ).execute()
                 with open('spreadsheet.id', 'w') as f:
                     f.write(self.spreadsheet_id)
 
-            print(self.sheet.keys())
+            print(self.sheet['spreadsheetUrl'])
 
     def get_emails(self):
         emails = self.email.users().messages().list(userId='me').execute()
@@ -95,11 +118,11 @@ class MySpreedsheet:
             
             for header_value in res['payload']['headers']:
                 
-                if header_value['name'] == 'Subject':
+                if header_value['name'].lower() == 'subject':
                     self.email_subjects.append(header_value['value'])
+
+                if header_value['name'].lower() == 'from':
                     
-                if header_value['name'] == 'From' or header_value['name'] == 'FROM' or header_value['name'] == 'from':
-                    # print(f".{header_value['value']}")
                     self.from_email.append(header_value['value'])
                     
 
@@ -129,3 +152,4 @@ if __name__ == '__main__':
     print('grabbing emails.. ')
     ss.get_emails()
     print(ss.spreadsheet_id)
+    print(ss.spreadsheet_url['spreadsheetUrl'])
