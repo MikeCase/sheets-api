@@ -7,19 +7,22 @@ import pprint
 import sys
 import base64
 
-from google.auth.transport.requests import Request
-from google.oauth2.credentials import Credentials
-from google_auth_oauthlib.flow import InstalledAppFlow
+# from google.auth.transport.requests import Request
+# from google.oauth2.credentials import Credentials
+# from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
 from rich import print, console
+
+from connection import Connection
 # from tabulate import tabulate
 
 
 
 SCOPES = ['https://www.googleapis.com/auth/drive', 'https://www.googleapis.com/auth/spreadsheets', 'https://mail.google.com', ]
-os.environ['OAUTHLIB_RELAX_TOKEN_SCOPE'] = '1'
+# os.environ['OAUTHLIB_RELAX_TOKEN_SCOPE'] = '1'
+conn = Connection(SCOPES)
 
 class MySpreedsheet:
     def __init__(self):
@@ -27,23 +30,7 @@ class MySpreedsheet:
             
         """
         self.sheet = None
-        self.creds = None
-        # The file token.json stores the user's access and refresh tokens, and is
-        # created automatically when the authorization flow completes for the first
-        # time.
-        if os.path.exists('token.json'):
-            self.creds = Credentials.from_authorized_user_file('token.json', SCOPES)
-        # If there are no (valid) credentials available, let the user log in.
-        if not self.creds or not self.creds.valid:
-            if self.creds and self.creds.expired and self.creds.refresh_token:
-                self.creds.refresh(Request())
-            else:
-                flow = InstalledAppFlow.from_client_secrets_file(
-                    'credentials.json', SCOPES)
-                self.creds = flow.run_local_server(port=0)
-            # Save the credentials for the next run
-            with open('token.json', 'w') as token:
-                token.write(self.creds.to_json())
+        self.creds = conn.make_connection()
 
         try:
             # Call the Calendar API
@@ -115,8 +102,8 @@ class MySpreedsheet:
             # print(self.sheet['spreadsheetUrl'])
 
     def get_emails(self, pageId=None):
-        
-        emails = self.email.users().messages().list(userId='me', maxResults=500, pageToken=pageId).execute()
+        max_results = 25
+        emails = self.email.users().messages().list(userId='me', maxResults=max_results, pageToken=pageId).execute()
         max_page_count = (emails['resultSizeEstimate'])
         nextPageToken = emails['nextPageToken']
         print(f'Getting page {self.page_count} of {max_page_count}')
@@ -134,7 +121,7 @@ class MySpreedsheet:
                 if header_value['name'].lower() == 'from':
                     self.from_email.append(header_value['value'])
                     
-        if nextPageToken and self.page_count >= 3:
+        if nextPageToken and self.page_count < 3:
             self.page_count += 1
             self.get_emails(pageId=nextPageToken)
 
