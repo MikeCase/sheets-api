@@ -16,6 +16,7 @@ from googleapiclient.errors import HttpError
 from rich import print, console
 
 from connection import Connection
+from gmail import GMail
 # from tabulate import tabulate
 
 
@@ -35,7 +36,7 @@ class MySpreedsheet:
         try:
             # Call the Calendar API
             self.sheets = build('sheets', 'v4', credentials=self.creds)
-            self.email = build('gmail', 'v1', credentials=self.creds)
+            self.email = GMail(self.creds)
             self.email_subjects = []
             self.from_email = []
             self.sheet_range = 'Sheet1!A:C'
@@ -101,44 +102,44 @@ class MySpreedsheet:
 
             # print(self.sheet['spreadsheetUrl'])
 
-    def get_emails(self, pageId=None):
-        max_results = 25
-        emails = self.email.users().messages().list(userId='me', maxResults=max_results, pageToken=pageId).execute()
-        max_page_count = (emails['resultSizeEstimate'])
-        nextPageToken = emails['nextPageToken']
-        print(f'Getting page {self.page_count} of {max_page_count}')
+    # def get_emails(self, pageId=None):
+    #     max_results = 25
+    #     emails = self.email.users().messages().list(userId='me', maxResults=max_results, pageToken=pageId).execute()
+    #     max_page_count = (emails['resultSizeEstimate'])
+    #     nextPageToken = emails['nextPageToken']
+    #     print(f'Getting page {self.page_count} of {max_page_count}')
 
-        email_ids = [i['id'] for i in emails['messages']]
+    #     email_ids = [i['id'] for i in emails['messages']]
         
-        for item in email_ids:
-            res = self.email.users().messages().get(userId='me', id=item).execute()
+    #     for item in email_ids:
+    #         res = self.email.users().messages().get(userId='me', id=item).execute()
             
-            for header_value in res['payload']['headers']:
+    #         for header_value in res['payload']['headers']:
                 
-                if header_value['name'].lower() == 'subject':
-                    self.email_subjects.append(header_value['value'])
+    #             if header_value['name'].lower() == 'subject':
+    #                 self.email_subjects.append(header_value['value'])
 
-                if header_value['name'].lower() == 'from':
-                    self.from_email.append(header_value['value'])
+    #             if header_value['name'].lower() == 'from':
+    #                 self.from_email.append(header_value['value'])
                     
-        if nextPageToken and self.page_count < 3:
-            self.page_count += 1
-            self.get_emails(pageId=nextPageToken)
+    #     if nextPageToken and self.page_count < 3:
+    #         self.page_count += 1
+    #         self.get_emails(pageId=nextPageToken)
 
-        data = zip(self.from_email, self.email_subjects)
+    #     data = zip(self.from_email, self.email_subjects)
 
-        # pprint.pprint(data)
+    #     # pprint.pprint(data)
 
-        values = [email for email in data]
-        body = {'values': values}
+    #     values = [email for email in data]
+    #     body = {'values': values}
 
-        sheet_result = self.sheets.spreadsheets().values().update(
-            spreadsheetId=self.spreadsheet_id,
-            range=self.sheet_range,
-            valueInputOption='USER_ENTERED',
-            body=body
-        ).execute()
-        print(f'{sheet_result.get("updatedCells")} Cells updated.')
+    #     sheet_result = self.sheets.spreadsheets().values().update(
+    #         spreadsheetId=self.spreadsheet_id,
+    #         range=self.sheet_range,
+    #         valueInputOption='USER_ENTERED',
+    #         body=body
+    #     ).execute()
+    #     print(f'{sheet_result.get("updatedCells")} Cells updated.')
 
 if __name__ == '__main__':
     ss = MySpreedsheet()
