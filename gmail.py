@@ -1,25 +1,42 @@
+import os
 from connection import Connection
 
 from googleapiclient.discovery import build
+from rich import print
+
+
 
 class GMail:
     def __init__(self, credentials):
         self.creds = credentials
         self.email_subjects = []
         self.from_email = []
+        self.page_count = 1
         self.gmail = build('gmail', 'v1', credentials=self.creds)
 
-    def get_emails(self, pageId=None):
-        max_results = 25
+    def get_emails(self, pageId=None, maxPageCount=3, max_results=25):
+        '''Just get emails till you run out of nextPageTokens :P
+           Ok not quite that extreme. I've set limits for the amount 
+           of emails to return.
+        '''
+        
+        # Get a list of emails from the server. 
+        # the maximum amount of results returned is
+        # determined by max_results
+        total_messages = self.gmail.users().get(userId='me')
+
         emails = self.gmail.users().messages().list(userId='me', maxResults=max_results, pageToken=pageId).execute()
-        max_page_count = (emails['resultSizeEstimate'])
+        max_page_count = maxPageCount
+        totalPages = total_messages['messagesTotal']/maxPageCount
         nextPageToken = emails['nextPageToken']
+
         print(f'Getting page {self.page_count} of {max_page_count}')
 
-        email_ids = [i['id'] for i in emails['messages']]
+        email_ids = [e_id['id'] for e_id in emails['messages']]
         
-        for item in email_ids:
-            res = self.gmail.users().messages().get(userId='me', id=item).execute()
+        # Filter out everything except for from addresses and the subject. 
+        for email_id in email_ids:
+            res = self.gmail.users().messages().get(userId='me', id=email_id).execute()
             
             for header_value in res['payload']['headers']:
                 
@@ -28,23 +45,23 @@ class GMail:
 
                 if header_value['name'].lower() == 'from':
                     self.from_email.append(header_value['value'])
-                    
-        if nextPageToken and self.page_count < 3:
+
+        # If there's a next page token, then use that to read the next 
+        # max_results batch. I think this is called recursion...             
+        if nextPageToken and self.page_count < max_page_count:
             self.page_count += 1
             self.get_emails(pageId=nextPageToken)
 
-        data = zip(self.from_email, self.email_subjects)
+        data = zip(self.from_email, self.email_subjects) # Combine the emails and the subject lines into one list. 
 
-        # pprint.pprint(data)
 
         return data
-        # values = [email for email in data]
-        # body = {'values': values}
+        
 
-        # sheet_result = self.sheets.spreadsheets().values().update(
-        #     spreadsheetId=self.spreadsheet_id,
-        #     range=self.sheet_range,
-        #     valueInputOption='USER_ENTERED',
-        #     body=body
-        # ).execute()
-        # print(f'{sheet_result.get("updatedCells")} Cells updated.')
+    def _write_nextpage_token(self, npToken):
+        with open('nptoken.tok', 'w', encoding='utf-8') as tkfile:
+            tkfile.write(npToken)
+
+    def _read_nextpage_token(self, nptkFile):
+        with open(nptkFile, 'r') as tkfile:
+            return tkfile.readline()
