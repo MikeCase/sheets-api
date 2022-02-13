@@ -38,7 +38,7 @@ class MySpreedsheet:
         self.sheets.add_emails_to_sheet(data)
 
     def get_emails(self):
-        return self.email.get_emails(max_results=500)
+        return self.email.get_emails(max_results=50)
 
 if __name__ == '__main__':
     ss = MySpreedsheet()
