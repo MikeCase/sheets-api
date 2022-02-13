@@ -23,14 +23,14 @@ class GMail:
         # Get a list of emails from the server. 
         # the maximum amount of results returned is
         # determined by max_results
-        total_messages = self.gmail.users().get(userId='me')
+        total_messages = self.gmail.users().getProfile(userId='me').execute()
 
         emails = self.gmail.users().messages().list(userId='me', maxResults=max_results, pageToken=pageId).execute()
         max_page_count = maxPageCount
-        totalPages = total_messages['messagesTotal']/maxPageCount
+        totalPages = total_messages['messagesTotal']/max_results
         nextPageToken = emails['nextPageToken']
 
-        print(f'Getting page {self.page_count} of {max_page_count}')
+        print(f'Getting page {self.page_count} of {totalPages}')
 
         email_ids = [e_id['id'] for e_id in emails['messages']]
         
@@ -50,7 +50,7 @@ class GMail:
         # max_results batch. I think this is called recursion...             
         if nextPageToken and self.page_count < max_page_count:
             self.page_count += 1
-            self.get_emails(pageId=nextPageToken)
+            self.get_emails(pageId=nextPageToken, max_results=max_results)
 
         data = zip(self.from_email, self.email_subjects) # Combine the emails and the subject lines into one list. 
 
