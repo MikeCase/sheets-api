@@ -18,27 +18,30 @@ conn = Connection(SCOPES)
 
 class MySpreedsheet:
     def __init__(self):
-        """Shows basic usage of the Google sheets API.
+        """Main entrypoint for app. 
             
         """
         self.sheet = None
-        self.creds = conn.make_connection()
+        self.creds = conn.get_creds()
 
         try:
             # Call the Calendar API
             self.sheets = SpreadSheet(self.creds)
             self.email = GMail(self.creds)
 
-            self.sheets.open_or_create_sheet()
+            self.open_or_create_sheet()
             
         except HttpError as error:
             print('An error occurred: %s' % error)
 
-    def add_emails(self, data):
-        self.sheets.add_emails_to_sheet(data)
+    async def open_or_create_sheet(self):
+        await self.sheets.open_or_create_sheet()
 
-    def get_emails(self):
-        return self.email.get_emails(max_results=50)
+    async def add_emails(self, data):
+        await self.sheets.add_emails_to_sheet(data)
+
+    async def get_emails(self):
+        return await self.email.get_emails(max_results=50)
 
 if __name__ == '__main__':
     ss = MySpreedsheet()

@@ -1,6 +1,8 @@
 import datetime
 import os
-from googleapiclient.discovery import build
+import asyncio
+from aiogoogle import Aiogoogle
+# from googleapiclient.discovery import build
 
 from rich import print
 
@@ -8,11 +10,11 @@ from rich import print
 class SpreadSheet:
     def __init__(self, credentials):
         self.creds = credentials
-        self.sheets = build('sheets', 'v4', credentials=self.creds)
+        # self.sheets = build('sheets', 'v4', credentials=self.creds)
         self.sheet_range = 'Sheet1!A:C'
         self.spreadsheet_url = None
 
-    def _open_sheet(self, sheet_id):
+    async def _open_sheet(self, sheet_id):
         '''Private method
            Opens an existing spreadsheet.
         '''
@@ -20,23 +22,31 @@ class SpreadSheet:
 
         print("Spreadsheet Found")
         self.spreadsheet_id = ss_id
-        sheet = self.sheets.spreadsheets()
-        self.spreadsheet_url = sheet.get(spreadsheetId=ss_id).execute()
-        result = sheet.values().get(spreadsheetId=ss_id, range=self.sheet_range).execute()
-        values = result.get('values', [])
-        if not values:
-            print('Sheet Empty')
-            return
+        
+        async with Aiogoogle(service_account_creds=self.creds) as aiogoogle:
+            sheet = await aiogoogle.discover('sheets', 'v4')
+            res = await aiogoogle.as_service_account(sheet.values().get(
+                spreadsheetId=self.spreadsheet_id, 
+                range=self.sheet_range,
+            ))
+        print(res)
 
-        print('From\tSubject')
-        for row in values:
-            # if 'no-reply' in row[0].lower():
-            #     pass
-            # elif 'noreply' in row[0].lower():
-            #     pass
-            # else:
-            #     print(f'{row[0]}{row[1]}')
-            print(f'{row[0]}{row[1]}')
+        # self.spreadsheet_url = sheet.get(spreadsheetId=ss_id).execute()
+        # result = sheet.values().get(spreadsheetId=ss_id, range=self.sheet_range).execute()
+        # values = result.get('values', [])
+        # if not values:
+        #     print('Sheet Empty')
+        #     return
+
+        # print('From\tSubject')
+        # for row in values:
+        #     # if 'no-reply' in row[0].lower():
+        #     #     pass
+        #     # elif 'noreply' in row[0].lower():
+        #     #     pass
+        #     # else:
+        #     #     print(f'{row[0]}{row[1]}')
+        #     print(f'{row[0]}{row[1]}')
 
     def _create_sheet(self):
         '''Private method
@@ -72,7 +82,7 @@ class SpreadSheet:
             with open('spreadsheet.id', 'w') as f:
                 f.write(self.spreadsheet_id)
 
-    def open_or_create_sheet(self):
+    async def open_or_create_sheet(self):
         '''Decide weather or not to create a new sheet or open an existing sheet
            Nothing fancy going on here, basically if there's a spreadsheet.id file
            then open it and use that ID. Otherwise create a new file.
@@ -80,11 +90,11 @@ class SpreadSheet:
         if os.path.exists('spreadsheet.id'):
             with open('spreadsheet.id', 'r') as s_id:
                 ss_id = s_id.read()
-            self._open_sheet(ss_id)
+            await self._open_sheet(ss_id)
         else:
             self._create_sheet()
 
-    def add_emails_to_sheet(self, data):
+    async def add_emails_to_sheet(self, data):
         values = [email for email in data]
         body = {'values': values}
 
