@@ -9,12 +9,13 @@ class Connection:
     def __init__(self, scopes):
         self.service_account_key = json.load(open('service-account-creds.json'))
         self.scopes = scopes
+        self.creds = None
+
+    def get_creds(self):
         self.creds = ServiceAccountCreds(
             scopes=self.scopes, 
             **self.service_account_key
         )
-
-    def get_creds(self):
         return self.creds
 
     # def __init__(self, scopes):

@@ -25,11 +25,15 @@ class SpreadSheet:
         
         async with Aiogoogle(service_account_creds=self.creds) as aiogoogle:
             sheet = await aiogoogle.discover('sheets', 'v4')
-            res = await aiogoogle.as_service_account(sheet.values().get(
-                spreadsheetId=self.spreadsheet_id, 
-                range=self.sheet_range,
-            ))
-        print(res)
+            # print(dir(sheet))
+            res = await aiogoogle.as_service_account(
+                sheet.spreadsheets.values.get(
+                    spreadsheetId=self.spreadsheet_id, 
+                    range=self.sheet_range,
+                )
+            )
+
+        print(dir(res))
 
         # self.spreadsheet_url = sheet.get(spreadsheetId=ss_id).execute()
         # result = sheet.values().get(spreadsheetId=ss_id, range=self.sheet_range).execute()

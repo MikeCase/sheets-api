@@ -20,9 +20,9 @@ class GMail:
            of emails to return.
         '''
         async with Aiogoogle(service_account_creds=self.creds) as aiogoogle:
-            gmail = await aiogoogle('gmail', '1')
+            gmail = await aiogoogle.discover('gmail', 'v1')
             res = await aiogoogle.as_service_account(
-                gmail.users().messages().list(userId='me'),
+                gmail.users.messages.list(userId='me'),
             )
         print(res)
         # Get a list of emails from the server. 
